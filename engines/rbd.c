@@ -30,6 +30,7 @@ struct rbd_options {
 	char *pool_name;
 	char *client_name;
 	int busy_poll;
+    int client_priority;
 };
 
 static struct fio_option options[] = {
@@ -70,6 +71,16 @@ static struct fio_option options[] = {
 		.category	= FIO_OPT_C_ENGINE,
 		.group		= FIO_OPT_G_RBD,
 	},
+    {
+        .name       = "client_priority",
+        .lname      = "client priority",
+        .type       = FIO_OPT_INT,
+        .help       = "rados client queue priority",
+        .off1       = offsetof(struct rbd_options, client_priority),
+        .def        = "63",
+        .category   = FIO_OPT_C_ENGINE,
+        .group      = FIO_OPT_G_RBD,
+    },            
 	{
 		.name = NULL,
 	},
@@ -128,6 +139,13 @@ static int _fio_rbd_connect(struct thread_data *td)
 		log_err("rados_connect failed.\n");
 		goto failed_shutdown;
 	}
+
+    r = rados_set_client_priority(rbd->cluster, o->client_priority);
+    if (r < 0) {
+        log_err("rados_set_client_priority failed.\n");
+        goto failed_shutdown;
+    }
+    // log_info("client_priority %d!\n", o->client_priority); 
 
 	r = rados_ioctx_create(rbd->cluster, o->pool_name, &rbd->io_ctx);
 	if (r < 0) {
